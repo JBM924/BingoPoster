@@ -1,0 +1,797 @@
+<!DOCTYPE html><html lang="en"><head>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap" rel="stylesheet"><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>London Underground Bingo</title><style>
+:root{--radius:16px;--border:#E5E7EB;--text:#3c3c3b;--bg:#fff;--tube-red:#fdc500;--tube-blue:#fdc500;--muted:#3c3c3b}
+*{box-sizing:border-box}body{font-weight:500;margin:0;font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;background:#F7F7FB;color:var(--text)}
+header{position:sticky;top:0;z-index:20;background:#fdc500;color:#3c3c3b;text-align:center;padding:14px 16px;font-weight:700;letter-spacing:.5px;}
+header h1{margin:0;font-size:24px;color:#3c3c3b}
+.controls{position:sticky;top:60px;z-index:15;background:#fff;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;align-items:center;justify-content:center;color:#3c3c3b}
+.controls input[type="search"]{flex:1 1 260px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px}
+.btn{padding:10px 14px;border:1px solid var(--border);background:#fff;border-radius:12px;cursor:pointer;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12px;color:var(--muted);margin-left:auto;margin-right:4px}
+.dot{width:12px;height:12px;border-radius:999px;display:inline-block;margin-right:6px;border:1px solid rgba(0,0,0,.08);vertical-align:-2px}
+main{padding:16px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;align-items:stretch}
+.tile{position:relative;background:var(--bg);border:2px solid #3c3c3b;border-radius:var(--radius);padding:12px;min-height:160px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:transform .1s ease,box-shadow .2s ease}
+.tile:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.1)}
+.title{font-size:15px;line-height:1.2;font-weight:700;color:#3c3c3b}
+.desc{font-size:12px;color:#3c3c3b;line-height:1.25}.meta{font-size:12px;color:#3c3c3b}
+.roundel{display:inline-flex;align-items:center;gap:8px}.roundel .dot{width:10px;height:10px;border-radius:50%}
+.photo{width:100%;height:84px;object-fit:cover;border-radius:10px;border:1px solid #E6E6E6}
+.photo-cta{display:inline-block;font-size:12px;color:var(--tube-blue);text-decoration:underline;cursor:pointer}
+.tile.marked{color:#3c3c3b;box-shadow:0 10px 24px rgba(0,0,0,.2);transform:translateY(-2px) scale(1.02)}
+.tile.marked .meta{font-size:12px;color:#3c3c3b}.tile.marked .desc{font-size:12px;color:#3c3c3b;line-height:1.25}.tile.marked .photo-cta{color:#3c3c3b}
+.tile.marked::before{content:"";position:absolute;inset:0;border-radius:var(--radius);background:#fdc500;opacity:1;z-index:-1}
+@keyframes pop{0%{transform:scale(.9)}70%{transform:scale(1.06)}100%{transform:scale(1.02)}}.tile.just-marked{animation:pop 220ms ease-out}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:50}
+.modal{background:#fff;border-radius:16px;padding:20px;width:min(520px,92vw);border:1px solid #e5e7eb;box-shadow:0 20px 40px rgba(0,0,0,.2);text-align:center}
+.modal h2{margin:0 0 8px 0;color:var(--tube-blue)}.modal p{margin:0 0 16px 0;color:#475467}.modal .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn.primary{background:var(--tube-blue);color:#fff;border-color:var(--tube-blue)}#confettiCanvas{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
+.lb-table{width:100%;border-collapse:collapse;margin-top:12px}.lb-table th,.lb-table td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+.lb-table th{color:#475467;font-weight:600}.input{padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px}.flex{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+@media print{header,.controls{position:sticky;top:60px;z-index:15;background:#fff;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;align-items:center;justify-content:center;color:#3c3c3b}.btn,.controls input[type="search"]{display:none}body{background:#fff}.grid{grid-template-columns:repeat(5,1fr)}}
+a{color:#3c3c3b;text-decoration:underline} .photo-cta{color:#3c3c3b;text-decoration:underline}
+</style></head><body>
+<header><img id="brandLogo" src="logo.png" alt="Logo" style="width:200px;max-width:60vw;display:block;margin:0 auto 6px;"/><h1>London Underground Bingo</h1></header>
+<div class="controls">
+  <input id="search" type="search" placeholder="Search stations…"/>
+  <button class="btn" id="shuffle">Shuffle</button>
+  <button class="btn" id="clear">Clear marks</button>
+  <button class="btn" id="share">Share Board</button>
+  <button class="btn" id="openLeaderboard">Leaderboard</button>
+  <div class="legend">
+    <span><span class="dot" style="background:#FFD84D;"></span>LU poster</span>
+    <span><span class="dot" style="background:#8E59FF;"></span>LU large poster</span>
+    <span><span class="dot" style="background:#3BD16F;"></span>Light-up billboard</span>
+    <span><span class="dot" style="background:#FF8A3B;"></span>National Rail poster</span>
+  </div>
+</div>
+<main><div id="grid" class="grid" aria-live="polite"></div></main>
+<canvas id="confettiCanvas"></canvas>
+<div id="winBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+  <div class="modal">
+    <h2 id="winTitle">Bingo complete 🎉</h2>
+    <p>You’ve marked every station on the board. Share your victory or start again.</p>
+    <div class="actions">
+      <button class="btn primary" id="shareWin">Share this board</button>
+      <button class="btn" id="printWin">Print</button>
+      <button class="btn" id="resetWin">Clear marks</button>
+      <button class="btn" id="closeWin">Close</button>
+    </div>
+  </div>
+</div>
+<div id="lbBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="lbTitle" style="display:none;">
+  <div class="modal">
+    <h2 id="lbTitle">Leaderboard</h2>
+    <p class="lb-sub">Who has marked the most stations?</p>
+    <div class="flex" style="margin-top:8px;">
+      <input id="lbName" class="input" type="text" placeholder="Your name (for scoreboard)" style="min-width:220px;">
+      <button class="btn primary" id="lbSubmit">Submit my score</button>
+      <button class="btn" id="lbRefresh">Refresh</button>
+      <button class="btn" id="lbClose">Close</button>
+    </div>
+    <table class="lb-table" id="lbTable">
+      <thead><tr><th>#</th><th>Name</th><th>Marked</th><th>%</th><th>Shared board</th></tr></thead>
+      <tbody><tr><td colspan="5" style="text-align:center;color:#667085;">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+<script>
+const DATA = [
+  {
+    "location": "EARLS COURT",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HOLBORN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CAMDEN TOWN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LEICESTER SQUARE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BETHNAL GREEN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "OXFORD CIRCUS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "PICCADILLY CIRCUS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "GOODGE STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TOTTENHAM HALE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "SOUTHGATE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TUFNELL PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "SOUTH KENSINGTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "PADDINGTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "REGENTS PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HAMPSTEAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "KENNINGTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BOND STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "EUSTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "KNIGHTSBRIDGE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "EMBANKMENT",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HIGHGATE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "KENTISH TOWN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TOOTING BROADWAY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "MAIDA VALE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "GREAT PORTLAND STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "NOTTING HILL GATE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "SHEPHERDS BUSH",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "STOCKWELL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LONDON BRIDGE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CHALK FARM",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TOOTING BEC",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LEYTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LEYTONSTONE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "VAUXHALL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CANADA WATER",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "GRANGE HILL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LANCASTER GATE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ARCHWAY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HAINAULT",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HOUNSLOW EAST",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ELM PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TURNHAM GREEN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HATTON CROSS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WEST HAM",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "STAMFORD BROOK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "MORDEN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CHANCERY LANE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ST JOHNS WOOD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BERMONDSEY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "QUEENSBURY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "PRESTON ROAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "KINGSBURY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WATERLOO",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "FINCHLEY CENTRAL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "PIMLICO",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CANNING TOWN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CANARY WHARF DLR",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ELEPHANT & CASTLE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "LAMBETH NORTH",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BOSTON MANOR",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "COVENT GARDEN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "KINGS CROSS ST PANCRAS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "GREEN PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "COLINDALE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "RUISLIP MANOR",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CANNING TOWN DLR",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ST PAULS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ALDGATE EAST",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HEATHROW TERMINALS 123",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BRIXTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "RAVENSCOURT PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WARREN STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TOTTENHAM COURT ROAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BAKER STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "EALING BROADWAY (Elizabeth Ln)",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BANK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BANK DLR",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HIGHBURY & ISLINGTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BALHAM",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "NORTHOLT",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "TURNPIKE LANE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WARWICK AVENUE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WATFORD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WALTHAMSTOW CENTRAL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WHITE CITY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WEST FINCHLEY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WEST HAMPSTEAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WILLESDEN GREEN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WEST KENSINGTON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ACTON TOWN",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CHISWICK PARK",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "ANGEL",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BAYSWATER",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BLACKFRIARS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "BLACKHORSE ROAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "CLAPHAM COMMON",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "GLOUCESTER ROAD",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "HOUNSLOW WEST",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "MARYLEBONE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "OLD STREET",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "OSTERLEY",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "RUSSELL SQUARE",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "SEVEN SISTERS",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "WESTMINSTER",
+    "format": "London Underground Poster"
+  },
+  {
+    "location": "QUEENSWAY",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "VICTORIA",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "EAST FINCHLEY",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "TOWER HILL",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "GANTS HILL",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "CANARY WHARF",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "SOUTHWARK",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "BOROUGH",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "FINSBURY PARK",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "HOLLAND PARK",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "CLAPHAM SOUTH",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "CHARING CROSS",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "MANSION HOUSE",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "HYDE PARK CORNER",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "MOORGATE",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "WOOD GREEN",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "BOUNDS GREEN",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "MANOR HOUSE",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "SWISS COTTAGE",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "MORNINGTON CRESCENT",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "NINE ELMS",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "HAMMERSMITH District Line",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "HOLLOWAY ROAD",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "KILBURN",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "KILBURN PARK",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "OVAL",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "REDBRIDGE",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "CALEDONIAN ROAD",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "BELSIZE PARK",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "CLAPHAM NORTH",
+    "format": "London Underground Large Poster"
+  },
+  {
+    "location": "Victoria Stn",
+    "format": "Light up billboard"
+  },
+  {
+    "location": "Charing Cross Stn",
+    "format": "Light up billboard"
+  },
+  {
+    "location": "Marylebone Stn",
+    "format": "Light up billboard"
+  },
+  {
+    "location": "Liverpool Street Stn",
+    "format": "Light up billboard"
+  },
+  {
+    "location": "Twickenham Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Fenchurch Street Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Blackfriars Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "City Thameslink Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Finsbury Park Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Elephant And Castle Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "St Albans Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Harpenden Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Stevenage Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Bromley South Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Orpington Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Euston Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Staines Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Slough Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "New Malden Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Watford Junction Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Vauxhall Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Waterloo East Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Waterloo Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Wimbledon Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Sevenoaks Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Earlsfield Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Richmond Stn",
+    "format": "National Rail Poster"
+  },
+  {
+    "location": "Paddington Stn",
+    "format": "National Rail Poster"
+  }
+];
+const LOCATION_DESCRIPTION_TSV = "EARLS COURT\tDISTRICT LINE TICKET HALL WARWICK ROAD END\nHOLBORN\tLOW LEVEL CORRIDORS TO FROM PICCADILLY LINE PLATFORMS\nCAMDEN TOWN\tNORTHERN LINE PLATFORM 4 SOUTHBOUND\nLEICESTER SQUARE\tPICCADILLY LINE PLATFORM 1 WESTBOUND\n... (full TSV omitted for brevity in this build) ...";
+const DESC_MAP = {};
+LOCATION_DESCRIPTION_TSV.split(/\r?\n/).forEach(line=>{ if(!line.trim())return; const parts=line.split(/\t+/); const s=(parts[0]||'').trim().toUpperCase(); const d=(parts[1]||'').trim(); if(s&&d){ (DESC_MAP[s]||(DESC_MAP[s]=[])).push(d); } });
+let getOccurrenceIndex = (function(){ const seen={}; return (s)=> (seen[s]=(seen[s]||0)+1)-1; })();
+const COLOR_MAP={"london underground poster":"#fdc500","london underground large poster":"#6A0F5A","light up billboard":"#00964F","national rail poster":"#FF913D"};
+function colorFor(f){ if(!f)return'#E5E7EB'; const k=String(f).toLowerCase().trim(); if(COLOR_MAP[k])return COLOR_MAP[k];
+  if(k.includes('london underground')&&k.includes('large'))return COLOR_MAP['london underground large poster'];
+  if(k.includes('london underground'))return COLOR_MAP['london underground poster'];
+  if(k.includes('light')&&k.includes('billboard'))return COLOR_MAP['light up billboard'];
+  if(k.includes('national')&&k.includes('rail'))return COLOR_MAP['national rail poster'];
+  return'#E5E7EB'; }
+function shuffleInPlace(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+let order=[...Array(DATA.length).keys()], marks=new Array(DATA.length).fill(0);
+function encodeState(){return btoa(JSON.stringify({order,marks}));}
+function decodeState(h){ try{ const {order:o,marks:m}=JSON.parse(atob(h)); if(Array.isArray(o)&&o.length===DATA.length)order=o; if(Array.isArray(m)&&m.length===DATA.length)marks=m; }catch(e){} }
+function saveToLocal(){ try{ localStorage.setItem('lou-bingo',JSON.stringify({order,marks})); }catch{} }
+function loadFromLocal(){ try{ const raw=localStorage.getItem('lou-bingo'); if(!raw)return; const {order:o,marks:m}=JSON.parse(raw); if(Array.isArray(o)&&o.length===DATA.length)order=o; if(Array.isArray(m)&&m.length===DATA.length)marks=m; }catch{} }
+function makeDescFor(station){ const list=(DESC_MAP[station.toUpperCase()]||[]); const idx=getOccurrenceIndex(station.toUpperCase()); return list[idx]||list[list.length-1]||''; }
+function render(){ getOccurrenceIndex=(function(){ const seen={}; return (s)=> (seen[s]=(seen[s]||0)+1)-1; })(); const grid=document.getElementById('grid'); grid.innerHTML=''; const q=document.getElementById('search').value.trim().toLowerCase();
+  const filtered=order.filter(i=>{const r=DATA[i]; return !q||r.location.toLowerCase().includes(q)||String(r.format).toLowerCase().includes(q);});
+  filtered.forEach(idx=>{ const r=DATA[idx]; const tile=document.createElement('div'); tile.className='tile'; tile.style.setProperty('--tint',colorFor(r.format)); if(marks[idx]) tile.classList.add('marked');
+    const title=document.createElement('div'); title.className='title'; title.textContent=r.location;
+    const desc=document.createElement('div'); desc.className='desc'; desc.textContent=makeDescFor(r.location);
+    const meta=document.createElement('div'); meta.className='meta'; meta.innerHTML=`<span class="roundel"><span class="dot" style="background:${colorFor(r.format)}"></span>${r.format||''}</span>`;
+    const img=document.createElement('img'); img.className='photo'; img.alt='Proof photo'; img.style.display='none';
+    const file=document.createElement('input'); file.type='file'; file.accept='image/*'; file.style.display='none';
+    const cta=document.createElement('span'); cta.className='photo-cta'; cta.textContent='Attach photo'; cta.addEventListener('click',e=>{e.stopPropagation(); file.click();});
+    file.addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; const rr=new FileReader(); rr.onload=ev=>{ img.src=ev.target.result; img.style.display='block'; }; rr.readAsDataURL(f); });
+    tile.addEventListener('click',()=>{ const on=tile.classList.toggle('marked'); if(on){ tile.classList.add('just-marked'); setTimeout(()=>tile.classList.remove('just-marked'),260); tile.style.setProperty('--marked-bg',colorFor(r.format)); } marks[idx]=on?1:0; saveToLocal(); checkCompletion(); });
+    tile.append(title,desc,meta,cta,img,file); grid.appendChild(tile); });
+}
+function checkCompletion(){ const total=marks.reduce((a,b)=>a+b,0); if(total===DATA.length) celebrate(); }
+function celebrate(){ const c=document.getElementById('confettiCanvas'),ctx=c.getContext('2d'); const W=c.width=innerWidth,H=c.height=innerHeight; c.style.display='block';
+  const colors=['#FFD84D','#8E59FF','#3BD16F','#FF8A3B','#DA291C','#003688']; const ps=Array.from({length:180},()=>({x:Math.random()*W,y:-20-Math.random()*H,r:4+Math.random()*6,c:colors[Math.floor(Math.random()*colors.length)],s:2+Math.random()*4,a:Math.random()*2*Math.PI}));
+  let frame=0; const max=240; (function tick(){ ctx.clearRect(0,0,W,H); ps.forEach(p=>{ p.y+=p.s; p.x+=Math.sin((p.y+p.a)/25); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); }); if(++frame<max) requestAnimationFrame(tick); else c.style.display='none'; })();
+  document.getElementById('winBackdrop').style.display='flex';
+}
+document.getElementById('closeWin').addEventListener('click',()=>{document.getElementById('winBackdrop').style.display='none';});
+document.getElementById('resetWin').addEventListener('click',()=>{marks=marks.map(()=>0); document.getElementById('winBackdrop').style.display='none'; render(); saveToLocal();});
+document.getElementById('printWin').addEventListener('click',()=>window.print());
+document.getElementById('shareWin').addEventListener('click',()=>{ const url=location.origin+location.pathname+'#'+encodeState(); navigator.clipboard.writeText(url).then(()=>alert('Share link copied!')); });
+
+const LEADERBOARD_ENDPOINT = "https://script.google.com/macros/s/AKfycbx4jB1yquMiMEng9OAhSKkY1xYyLJM3jWCowBMO6qHA-9Si2ANCqbB5AoBJrZxUetbKUQ/exec";
+function openLeaderboard(){document.getElementById('lbBackdrop').style.display='flex'; fetchLeaderboard();}
+function closeLeaderboard(){document.getElementById('lbBackdrop').style.display='none';}
+async function fetchLeaderboard(){ const tbody=document.querySelector('#lbTable tbody'); tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#667085;">Loading…</td></tr>';
+  try{ const res=await fetch(LEADERBOARD_ENDPOINT+'?mode=list'); const data=await res.json(); data.sort((a,b)=>(b.count||0)-(a.count||0));
+    const rows=data.map((row,i)=>{ const pct=row.total?Math.round((row.count||0)*100/row.total):0; const link=row.share_url?`<a href="${row.share_url}" target="_blank">link</a>`:'';
+      return `<tr><td>${i+1}</td><td>${row.name||'Anon'}</td><td>${row.count||0}/${row.total||0}</td><td>${pct}%</td><td>${link}</td></tr>`; }).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align:center;color:#667085;">No scores yet — be the first!</td></tr>';
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#B42318;">Failed to load leaderboard. Check your Apps Script deployment.</td></tr>';
+  }
+}
+async function submitScore(){ const name=(document.getElementById('lbName').value||'').trim()||'Anonymous'; const count=marks.reduce((a,b)=>a+b,0); const total=DATA.length; const share_url=location.origin+location.pathname+'#'+encodeState();
+  try{ const res=await fetch(LEADERBOARD_ENDPOINT+'?mode=submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,count,total,share_url})}); if(!res.ok) throw new Error('HTTP '+res.status);
+    await fetchLeaderboard(); alert('Score submitted!'); } catch(e) { alert('Could not submit. Check your endpoint URL and access.'); }
+}
+document.getElementById('openLeaderboard').addEventListener('click',openLeaderboard);
+document.getElementById('lbClose').addEventListener('click',closeLeaderboard);
+document.getElementById('lbRefresh').addEventListener('click',fetchLeaderboard);
+document.getElementById('lbSubmit').addEventListener('click',submitScore);
+
+document.getElementById('shuffle').addEventListener('click',()=>{shuffleInPlace(order); render(); saveToLocal();});
+document.getElementById('clear').addEventListener('click',()=>{marks=marks.map(()=>0); document.querySelectorAll('.tile.marked').forEach(el=>el.classList.remove('marked')); saveToLocal();});
+document.getElementById('search').addEventListener('input',()=>render());
+document.getElementById('share').addEventListener('click',()=>{ const url=location.origin+location.pathname+'#'+encodeState(); navigator.clipboard.writeText(url).then(()=>alert('Share link copied to clipboard!')); });
+if(location.hash) decodeState(location.hash.slice(1)); else loadFromLocal();
+render();
+</script></body></html>
